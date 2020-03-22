@@ -1,0 +1,118 @@
+---
+title: 'Expected Returns R Project: Test 2'
+output:
+  html_document:
+    df_print: paged
+---
+
+Loading required 
+```{r}
+library(optimbase)
+library(MASS)
+```
+
+functions required for main code
+```{r}
+euclid_norm <- function(mu_,mu){
+  vec <- mu_ - mu
+  val_num <- sqrt(sum(vec^2))
+  val_den <- sqrt(sum(mu^2))
+  val <- val_num/val_den
+  return(val)
+}
+
+frob_norm <- function(sig_,sig){
+  library(matrixcalc)
+  x <- sig_ - sig
+  num <- frobenius.norm(x)
+  den <- frobenius.norm(sig)
+  val <- num/den
+  return(val)
+}
+
+sum_mu <- function(p,eps_mat){
+  n <- length(p)
+  val <- 0
+  for(i in c(1:n)){
+    val <- val + (p[i] *  transpose(eps_mat[i,]))
+  }
+  return(val)
+}
+
+sum_sig <- function(p,eps_mat,mu){
+  n <- size(eps_mat)[1]
+  m <- size(eps_mat)[2]
+  val<-matrix(0,nrow = m,ncol = m)
+  for(i in c(1:n)){
+    diff_vec <- transpose(eps_mat[i,]) - mu
+    a <- diff_vec %*% transpose(diff_vec)
+    val <- val + (p[i]*a)
+  }
+  return(val)
+}
+```
+
+Main Code
+```{r}
+fit_mlfp <- function(v,alpha,eps_mat,p_vec){
+  
+  #initialisation
+  m <- size(eps_mat)[2] #number of components in sample (i bar)
+  n <- length(p_vec) #number of entries (t)
+  q <- transpose(numeric(n))
+  w <- transpose(numeric(n))
+  mu_0 <- transpose(numeric(m))
+  sig_0 <- matrix(0,nrow = m,ncol = m)
+  mu <- sum_mu(p_vec,eps_mat)
+  sig <- sum_sig(p_vec,eps_mat,mu)
+  if(v>2){
+    sig <- ((v-2)/v)*sum_sig(p_vec,eps_mat,mu)
+  }
+  
+  #just to pass initial condition
+  euclid_dis <- 2*alpha
+  frob_dis <- 2*alpha
+  
+  
+  #Updation
+  while ((frob_dis>alpha) &&(euclid_dis>alpha)) {
+    #1: update w_t and q_t 
+    for(i in range(1:length(p_vec))){
+      expr <- (transpose(transpose(eps_mat[i,]) - mu) %*% ginv(sig) %*%(transpose(eps_mat[i,]) - mu))
+      w[i] <- (v + m)/(v + expr)
+    }
+    
+    const_den = transpose(p_vec) %*% w
+    for(i in range(1:length(p_vec))){
+      q[i] <- p_vec[i]*w[i]/const_den
+    }
+    
+    #2: upd mu and sig
+    mu_old <- mu
+    sig_old <- sig
+    mu <- sum_mu(q,eps_mat)
+    sig <- sum_sig(q,eps_mat,mu)
+      
+    #3: compute euclid_dis and frob_dis
+    euclid_dis <- euclid_norm(mu,mu_old)
+    frob_dis <- frob_norm(sig,sig_old)  
+  }
+  return(list("mu" = mu, "sigma square" = sig))
+}
+```
+
+
+Testing (Part 2):
+```{r}
+n <- 1000
+p <- transpose(seq(1/n,1/n,length.out = n))
+mu <- transpose(c(0,0))
+sigma <- matrix(c(1,0,0,1),2,2)
+eps_mat <- mvrnorm(n,mu,sigma)
+v=1000
+alpha = 0.000000001
+
+res <- fit_mlfp(v = v,alpha = alpha,eps_mat =  eps_mat,p_vec = p)
+
+res$mu
+res$`sigma square`
