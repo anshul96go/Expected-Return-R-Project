@@ -1,0 +1,67 @@
+---
+title: "Expected Returns R Project: Test 1"
+output: html_notebook
+---
+
+Test1: 
+Part (a): Estimating mu and sigma from E[X] and V[X]
+Defined for *univariate* lognormal random variable 
+```{r}
+parameter_est <- function(expectation, variance) {
+  sig <- log((variance/(expectation)^2) + 1)
+  mu <- log(expectation) - (0.5*sig)
+  #mu <- log( (expectation^2)/(sqrt(variance + (expectation^2)) ))
+  return(list("mu" = mu, "sigma" = sig))
+}
+```
+
+Part (b)(i):
+```{r}
+res <- parameter_est(3,5)
+
+mu_hat <- res$mu
+sig_hat <- res$sigma
+
+mu_hat
+sig_hat
+
+#Checking if the values are correct
+expectation_hat <- exp(mu_hat + 0.5*(sig_hat))
+variance_hat <- exp((2*mu_hat) + 2*(sig_hat)) - (expectation_hat^2)
+
+expectation_hat
+variance_hat
+```
+
+Part (b)(ii): This provided a good [reference](https://msalganik.wordpress.com/2017/01/21/making-sense-of-the-rlnorm-function-in-r/) for sampling, while highlighting the pitfalls of this exercise
+```{r}
+#Change sample size here
+n <- 1000
+sample <- rlnorm(n,mu_hat,sqrt(sig_hat))
+
+#checking if the values are correct
+mean(sample)
+var(sample)
+```
+
+Part (b)(iii): 
+```{r}
+plot(sample,type = "p",main = "Plot of lognormal sample", xlab = "Sample number", ylab = "Sample Value" )
+```
+Part (b)(iv):
+```{r}
+#Sample size = n (In tghis case, 1000)
+h <- hist(sample, plot=FALSE,breaks = 75) 
+plot(h, col="grey",freq = FALSE, main = "Histogram superimposed with true pdf",xlab = "x", ylab = "Density/Probability") 
+xlines <-seq(min(h$breaks),max(h$breaks),length.out=100) #seq of x for pdf
+lines(x = xlines,y=dlnorm(xlines,mu_hat,sqrt(sig_hat)))
+```
+
+Part (b)(v):
+```{r}
+plot(ecdf(sample), main = "Empirical (Black)  and True (Red) cdf", xlab = "x", ylab = "cdf F(x)")
+xlines <-seq(min(h$breaks),max(h$breaks),length.out=10)
+lines(x = xlines, y = plnorm(xlines, mu_hat, sqrt(sig_hat)), col = "red")
+legend( "topleft", c("Empirical cdf", "True cdf"), text.col=c("black", "red") )
+```
+
